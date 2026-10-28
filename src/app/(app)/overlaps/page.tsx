@@ -147,6 +147,16 @@ export function OverlapsPage() {
                     <strong>Statuses:</strong>{" "}
                     {Array.isArray(ca.statuses) ? ca.statuses.join(", ") : ""}
                   </p>
+                  {Array.isArray(ca.matchReasons) && ca.matchReasons.length > 0 && (
+                    <div className="text-sm text-ink">
+                      <strong>Why this was detected:</strong>
+                      <ul className="list-disc pl-5 mt-1 space-y-0.5">
+                        {(ca.matchReasons as string[]).map((r, i) => (
+                          <li key={i}>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </>
               );
             })()}

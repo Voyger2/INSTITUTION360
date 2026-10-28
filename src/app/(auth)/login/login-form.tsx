@@ -45,7 +45,7 @@ export function LoginForm() {
       );
       if (!match) {
         next.email =
-          "This prototype recognises only the listed demo AICTE accounts. Choose one below or enter its email exactly.";
+          "This prototype recognises only the listed demo portal accounts (fictional, example.com addresses). Choose one below or enter its email exactly.";
       }
     }
     setErrors(next);
@@ -131,7 +131,7 @@ export function LoginForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     aria-invalid={errors.email ? true : undefined}
                     aria-describedby={errors.email ? "login-email-error" : undefined}
-                    placeholder="e.g. rajesh.kumar@aicte.gov.in"
+                    placeholder="e.g. tanmay.mugdal@example.com"
                   />
                   {errors.email && (
                     <p id="login-email-error" className="error-text" role="alert">

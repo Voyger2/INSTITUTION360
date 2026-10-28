@@ -164,6 +164,7 @@ export function ComplaintsPage() {
             { key: "caseId", label: "Case ID", sortable: true },
             { key: "institutionName", label: "Institution", sortable: true },
             { key: "category", label: "Category", sortable: true },
+            { key: "priority", label: "Priority", sortable: true },
             { key: "bureauName", label: "Bureau/Cell", sortable: true },
             { key: "assignedOfficerName", label: "Assigned Officer", sortable: true },
             { key: "status", label: "Status", sortable: true },

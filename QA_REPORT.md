@@ -119,6 +119,27 @@ Final state at frontend completion — all commands re-run immediately before th
 - Initial cleanup removed a couple of destructured-but-unused context values (`getMetrics` on institution detail, `canUserChangeComplaint` on the Overlaps page) — behavior unchanged where the value was genuinely dead; the remaining permission logic uses `currentUser.role` directly.
 - Manual browser checks still required for: demo role switch flows, dialog interactions (status change, assign, transfer), toast rendering, and CSV download triggered by a real user click (export code path runs in a click handler only).
 
+## Part 3 — Enriched demo dataset & named demo accounts (October 28, 2026)
+
+**Why:** the original synthetic data used real institution names with fabricated allegations attached, officer accounts on a real-looking `aicte.gov.in` domain, and only 5 generic demo users. The dataset was rebuilt end-to-end so nothing fabricated implies facts about real colleges, offices or people, and so every demo role is a named person.
+
+### What changed
+
+- **All 16 institutions are now fictional** (`Sunrise Valley Institute of Technology`, `Blue Ridge College of Engineering`, …) with `AICTE-DEMO-10xx` permanent IDs and contact emails/websites on reserved documentation domains (`*.example.edu`). No real institution names remain anywhere in `src/` (verified by workspace scan).
+- **6 named demo accounts** (emails `*@example.com`, fictional): Tanmay Mugdal (System Administrator), Raghav Mangle (Bureau Officer, Regulation Bureau), Pranay Pedamkar (Bureau Officer, Public Grievance Redressal Cell), Niranjan Balwadkal (Bureau Officer, Approval Process Cell), Chaitrali Narkhede and Pranjal Thorat (Oversight Officers, read-only). Old accounts and all `aicte.gov.in` addresses removed, including the login placeholder.
+- **42 complaints** (was 14) across all 10 bureaus/cells, every status in the state machine represented, each carrying a new `priority` field (`High` 13 / `Medium` 18 / `Low` 11) surfaced on the detail page and as a register column. Received dates Jun–Oct 2026 with deadlines engineered so **11 active cases are overdue** and **5 are due within 7 days** of the dataset anchor.
+- **Deadline arithmetic is rule-driven, not hand-typed:** `lib/demo-state.ts` recomputes `isOverdue`/`daysOverdue` (overdue = active status AND disposal date past the anchor) and metrics on every read/mutation from a single `DEMO_DATA_AS_OF = "2026-10-28"` anchor constant (PPR forbids a live `new Date()` in the render path; a fixed snapshot keeps the demo internally consistent forever).
+- **13 overlap alerts** (one per institution with active cases in ≥2 desks) with mixed review states seeded via `SEED_ALERT_REVIEWS`: 8 `new`, 2 `reviewed`, 1 `related`, 1 `not_overlapping`, 1 `coordination_required` — so the review workflow can be demonstrated immediately, including alerts where the officer concluded there was no overlap. Detection now carries prior review state forward only when the underlying case combination is unchanged (sorted case-ID set comparison), so repeated detection is idempotent — same alert IDs, no duplicates, review decisions survive unrelated case mutations, and a changed case set resets the alert to `new`. Every alert also carries generated `matchReasons` ("why this was detected": shared AICTE ID, cases involved, desks involved, coordination hint) rendered in the expanded alert card. Negative examples included: an institution with several same-bureau complaints (inst-010), a rejected second-bureau case that must not trigger an alert (inst-015), and a cross-bureau pair that is all disposed/closed.
+- **30 seeded history entries** (`SEED_STATUS_HISTORY` / `SEED_ASSIGNMENT_HISTORY` / `SEED_ACTION_HISTORY`, `h-seed-*` IDs): status timelines ending exactly at each complaint's current status, an initial-assignment and a SWRO→RB transfer record, plus notes/clarification/escalation entries — so the audit log and case timelines demonstrate real workflow before any user action. Runtime history records now store the actor's **display name** (resolved from the user list) instead of a raw user ID.
+- **Role switcher → user switcher:** the sidebar now switches between all 6 named demo users (not 3 abstract roles), and notifications/permission logic is unchanged (roles still drive behaviour).
+
+### Verification (October 28, 2026)
+
+- `npx tsc --noEmit` 0 errors; `npm run lint` 0 errors / 0 warnings; `npm run build` green (18 route entries incl. PPR variants).
+- Detection logic compiled and exercised headlessly: 13 alerts, unique IDs, exact status mix (8/2/1/1/1), re-detection idempotent (same count/IDs), seeded reviews restored on reset, runtime review survives re-detection, case-set change produces no duplicates.
+- Served HTML spot-checks: dashboard shows 42 complaints / 11 overdue; institutions register lists fictional names only; audit log renders seeded actor names (no raw `user-*` IDs in content); complaints register shows the Priority column; all 6 accounts with `example.com` emails on `/login`; all routes (including detail pages and bogus-ID paths) return 200.
+- `Reset demo data` restores the full enriched dataset including seeded reviews and histories.
+
 ## How to run
 
 ```powershell
@@ -136,10 +157,10 @@ npm run start    # serves the optimized build
 
 ## Suggested browser demo path
 
-0. **Sign in** — `/login`: pick any listed demo account (or quick-enter a demo card), any password.
-1. Dashboard → 7 metric cards, Bureau-wise Workload & Status Distribution charts, Overlap Alerts widget.
-2. Complaints → 14 case rows, search/filters reset; "View" opens a detail page smoothly (PPR shell skeletons).
-3. Complaint detail (as admin or bureau_officer) → change status / assign officer / transfer → all three history sections update with timestamped, actionable entries. Switch to the oversight demo role (sidebar role switcher) to see the read-only notice.
-4. Overlaps → statuses shift to "reviewed" with reason through the review dialog.
+0. **Sign in** — `/login`: pick any of the 6 named demo accounts (Tanmay Mugdal admin, Raghav Mangle / Pranay Pedamkar / Niranjan Balwadkal bureau officers, Chaitrali Narkhede / Pranjal Thorat oversight), any password.
+1. Dashboard → 7 metric cards (42 complaints, 11 overdue), Bureau-wise Workload & Status Distribution charts, Overlap Alerts widget.
+2. Complaints → 42 case rows with Priority column, search/filters reset; "View" opens a detail page smoothly (PPR shell skeletons).
+3. Complaint detail (as admin or the case's bureau officer) → change status / assign officer / transfer → all three history sections update with timestamped, actionable entries. Switch to Chaitrali or Pranjal (sidebar user switcher) to see the read-only notice.
+4. Overlaps → 13 alerts with mixed states (8 new, 2 reviewed, 1 related, 1 not-overlapping, 1 coordination-required); expand an alert for the match reasons, and move a new alert through the review dialog — the decision persists across re-detection and resets restore it.
 5. Reports → CSV export works; Administration → users, bureaus, thresholds and status definitions all render correctly (admin only; other roles are redirected to `/access-denied`).
 6. Navigation lives in the new sidebar/bell/profile menu: `/notifications`, `/audit-log`, `/profile`, `/help`; sign out from the profile menu or sidebar footer returns to `/login`. Administration → "Reset demo data" restores the seed dataset behind a confirm dialog.

@@ -5,6 +5,13 @@ import { Bell, LogOut, Menu, X, LayoutDashboard, Building2, FileText, AlertTrian
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state-context";
+import type { UserRole } from "@/types";
+
+const DEMO_ROLE_LABELS: Record<UserRole, string> = {
+  admin: "System Administrator",
+  bureau_officer: "Bureau Officer",
+  oversight_officer: "Oversight Officer",
+};
 
 export interface NavItem {
   href: string;
@@ -165,29 +172,32 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 
         <div className="px-4 py-4 border-t border-border space-y-3">
           <div>
-            <label htmlFor="demo-role-switch" className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Demo role
+            <label htmlFor="demo-user-switch" className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Demo user
             </label>
             <select
-              id="demo-role-switch"
-              value={currentUser.role}
+              id="demo-user-switch"
+              value={currentUser.id}
               onChange={(e) => {
-                const role = e.target.value;
-                if (currentUser.role !== role) {
+                const id = e.target.value;
+                if (currentUser.id !== id) {
                   const nextUser =
-                    session.users.find((u) => u.role === role) ?? currentUser;
+                    session.users.find((u) => u.id === id) ?? currentUser;
                   session.setCurrentUser(nextUser);
                   router.refresh();
                 }
               }}
               className="select mt-1 w-full"
-              aria-label="Switch demo role (demonstration only)"
+              aria-label="Switch demo user (demonstration only)"
             >
-              <option value="admin">System Administrator</option>
-              <option value="bureau_officer">Bureau Officer (Regulation Bureau)</option>
-              <option value="oversight_officer">Oversight Officer (read-only)</option>
+              {session.users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} — {DEMO_ROLE_LABELS[u.role]}
+                  {u.bureauName ? ` (${u.bureauName})` : ""}
+                </option>
+              ))}
             </select>
-            <p className="hint">Switching the demo role is demonstration-only and has no backend effect.</p>
+            <p className="hint">Switching the demo user is demonstration-only and has no backend effect.</p>
           </div>
           <div className="flex items-center justify-between gap-2 pt-1 border-t border-border">
             <div className="min-w-0">

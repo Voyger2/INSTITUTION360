@@ -1,5 +1,5 @@
 import type { Complaint, ComplaintStatus, Institution, OverlapAlert } from "@/types";
-import { BUREAUS } from "@/data/demo-data";
+import { BUREAUS, SEED_ALERT_REVIEWS, type SeedAlertReview } from "@/data/demo-data";
 
 const ACTIVE_STATUSES: ComplaintStatus[] = [
   "Received",
@@ -11,7 +11,9 @@ const ACTIVE_STATUSES: ComplaintStatus[] = [
 
 export function detectOverlaps(
   complaints: Complaint[],
-  institutions: Institution[]
+  institutions: Institution[],
+  previousAlerts: OverlapAlert[] = [],
+  seedReviews: Record<string, SeedAlertReview> = SEED_ALERT_REVIEWS
 ): OverlapAlert[] {
   const alerts: OverlapAlert[] = [];
 
@@ -52,7 +54,22 @@ export function detectOverlaps(
       bureauNames.push(b ? b.name : code);
     }
 
+    caseIds.sort();
     const inst = institutions.find((i) => i.aictePermanentId === aicteId);
+    const previous = previousAlerts.find(
+      (a) => a.institutionAicteId === aicteId && sameCaseSet(a.caseIds, caseIds)
+    );
+    const seed = seedReviews[aicteId];
+
+    const alertStatus = previous
+      ? previous.alertStatus
+      : seed
+        ? seed.alertStatus
+        : "new";
+    const reviewedBy = previous?.reviewedBy ?? seed?.reviewedBy;
+    const reviewedAt = previous?.reviewedAt ?? seed?.reviewedAt;
+    const reviewDecision = previous?.reviewDecision ?? seed?.reviewDecision;
+    const reviewReason = previous?.reviewReason ?? seed?.reviewReason;
 
     alerts.push({
       id: `alert-${aicteId}`,
@@ -64,8 +81,17 @@ export function detectOverlaps(
       bureauNames: bureauNames as unknown as import("@/types").BureauName[],
       statuses,
       latestActionDates,
-      detectedAt: new Date().toISOString(),
-      alertStatus: "new",
+      matchReasons: [
+        `${caseIds.length} active complaints share this institution's AICTE Permanent ID (${aicteId}).`,
+        `Cases ${caseIds.join(", ")} are open across ${bureauCodes.length} desks: ${bureauNames.join(", ")}.`,
+        "Multiple parallel workflows on the same institution may duplicate effort; coordinate disposal decisions.",
+      ],
+      detectedAt: previous?.detectedAt ?? new Date().toISOString(),
+      alertStatus,
+      reviewedBy,
+      reviewedAt,
+      reviewDecision,
+      reviewReason,
       isDemoData: true,
     });
   }
@@ -75,6 +101,13 @@ export function detectOverlaps(
       new Date(b.latestActionDates[b.latestActionDates.length - 1] ?? "").getTime() -
       new Date(a.latestActionDates[a.latestActionDates.length - 1] ?? "").getTime()
   );
+}
+
+function sameCaseSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((id, i) => id === sortedB[i]);
 }
 
 export function getActiveStatuses(): ComplaintStatus[] {

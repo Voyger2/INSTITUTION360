@@ -7,8 +7,8 @@ import type {
   AssignmentHistory,
   StatusHistory,
 } from "@/types";
-import { COMPLAINTS, USERS, DEMO_CONFIG, BUREAUS, INSTITUTIONS } from "@/data/demo-data";
-import { detectOverlaps } from "@/lib/overlap-detection";
+import { COMPLAINTS, USERS, DEMO_CONFIG, BUREAUS, INSTITUTIONS, DEMO_DATA_AS_OF, SEED_STATUS_HISTORY, SEED_ASSIGNMENT_HISTORY, SEED_ACTION_HISTORY } from "@/data/demo-data";
+import { detectOverlaps, isStatusActive } from "@/lib/overlap-detection";
 import { calculateMetrics } from "@/lib/formatting";
 
 let complaints: Complaint[] = [...COMPLAINTS];
@@ -17,9 +17,9 @@ let currentUser: User = USERS[0]; // Default to admin
 let overlapAlerts: ReturnType<typeof detectOverlaps> = [];
 let metrics = calculateMetrics(complaints);
 
-let actionHistory: ActionHistory[] = [];
-let statusHistory: StatusHistory[] = [];
-let assignmentHistory: AssignmentHistory[] = [];
+let actionHistory: ActionHistory[] = [...SEED_ACTION_HISTORY];
+let statusHistory: StatusHistory[] = [...SEED_STATUS_HISTORY];
+let assignmentHistory: AssignmentHistory[] = [...SEED_ASSIGNMENT_HISTORY];
 
 let historyCounter = 0;
 
@@ -39,6 +39,32 @@ function notify(): void {
   for (const l of listeners) l();
 }
 
+function actorName(idOrName: string): string {
+  const u = users.find((x) => x.id === idOrName);
+  return u ? u.name : idOrName;
+}
+
+// Recompute fields that depend on the current date (overdue flags) and the
+// aggregate metrics, so counts always follow the dataset's own rules instead
+// of stale manual values.
+function refreshDerivedFields(): void {
+  const now = new Date(`${DEMO_DATA_AS_OF}T23:59:59`);
+  for (const c of complaints) {
+    const overdue =
+      isStatusActive(c.status) && new Date(c.expectedDisposalDate) < now;
+    c.isOverdue = overdue;
+    c.daysOverdue = overdue
+      ? Math.ceil(
+          (now.getTime() - new Date(c.expectedDisposalDate).getTime()) /
+            (1000 * 60 * 60 * 24)
+        )
+      : 0;
+  }
+  metrics = calculateMetrics(complaints);
+}
+
+refreshDerivedFields();
+
 function nextHistoryId(): string {
   historyCounter += 1;
   return `hist-${historyCounter}`;
@@ -56,7 +82,7 @@ function recordAction(
     complaintId,
     actionType,
     description,
-    performedBy,
+    performedBy: actorName(performedBy),
     performedAt: new Date().toISOString(),
     metadata,
     isDemoData: true,
@@ -75,7 +101,7 @@ function recordStatusChange(
     complaintId,
     fromStatus,
     toStatus,
-    changedBy,
+    changedBy: actorName(changedBy),
     changedAt: new Date().toISOString(),
     reason,
     isDemoData: true,
@@ -107,13 +133,14 @@ function recordAssignment(
     toOfficerId,
     toOfficerName,
     transferReason,
-    transferredBy,
+    transferredBy: actorName(transferredBy),
     transferredAt: new Date().toISOString(),
     isDemoData: true,
   });
 }
 
 export function getComplaints(): Complaint[] {
+  refreshDerivedFields();
   return [...complaints];
 }
 
@@ -127,12 +154,13 @@ export function getComplaintByCaseId(caseId: string): Complaint | undefined {
 
 export function setComplaints(next: Complaint[]): void {
   complaints = [...next];
-  metrics = calculateMetrics(complaints);
-  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS);
+  refreshDerivedFields();
+  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS, overlapAlerts);
   notify();
 }
 
 export function getMetrics() {
+  refreshDerivedFields();
   return { ...metrics, overlapAlerts: overlapAlerts.length };
 }
 
@@ -243,10 +271,10 @@ export function resetDemoData(): void {
     ? { ...(users.find((u) => u.id === sessionUserId) ?? USERS[0]) }
     : USERS[0];
   overlapAlerts = detectOverlaps(complaints, INSTITUTIONS);
-  metrics = calculateMetrics(complaints);
-  actionHistory = [];
-  statusHistory = [];
-  assignmentHistory = [];
+  refreshDerivedFields();
+  actionHistory = [...SEED_ACTION_HISTORY];
+  statusHistory = [...SEED_STATUS_HISTORY];
+  assignmentHistory = [...SEED_ASSIGNMENT_HISTORY];
   historyCounter = 0;
   notify();
 }
@@ -274,13 +302,7 @@ export function updateComplaintStatus(
   const oldStatus = complaint.status;
   complaint.status = newStatus;
   complaint.lastActionDate = new Date().toISOString().split("T")[0];
-  complaint.isOverdue = new Date(complaint.expectedDisposalDate) < new Date();
-  complaint.daysOverdue = complaint.isOverdue
-    ? Math.ceil(
-        (new Date().getTime() - new Date(complaint.expectedDisposalDate).getTime()) /
-          (1000 * 60 * 60 * 24)
-      )
-    : 0;
+  refreshDerivedFields();
 
   recordStatusChange(complaintId, oldStatus, newStatus, changedBy, reason);
   recordAction(
@@ -291,8 +313,7 @@ export function updateComplaintStatus(
     { fromStatus: oldStatus, toStatus: newStatus, reason }
   );
 
-  metrics = calculateMetrics(complaints);
-  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS);
+  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS, overlapAlerts);
 
   notify();
   return { success: true };
@@ -346,8 +367,8 @@ export function assignOfficer(
     { fromOfficer: oldOfficerName, toOfficer: officer.name, reason }
   );
 
-  metrics = calculateMetrics(complaints);
-  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS);
+  refreshDerivedFields();
+  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS, overlapAlerts);
 
   notify();
   return { success: true };
@@ -410,8 +431,8 @@ export function transferCase(
   );
   recordStatusChange(complaintId, oldStatus, "Transferred", transferredBy, transferReason);
 
-  metrics = calculateMetrics(complaints);
-  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS);
+  refreshDerivedFields();
+  overlapAlerts = detectOverlaps(complaints, INSTITUTIONS, overlapAlerts);
 
   notify();
   return { success: true };

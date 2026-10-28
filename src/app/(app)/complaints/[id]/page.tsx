@@ -200,6 +200,10 @@ function ComplaintDetailView({
                 <dd className="text-sm text-ink">{complaint.category}</dd>
               </div>
               <div>
+                <dt className="text-xs font-semibold text-ink-muted uppercase">Priority</dt>
+                <dd className="text-sm text-ink">{complaint.priority}</dd>
+              </div>
+              <div>
                 <dt className="text-xs font-semibold text-ink-muted uppercase">Bureau/Cell</dt>
                 <dd className="text-sm text-ink">{complaint.bureauName}</dd>
               </div>

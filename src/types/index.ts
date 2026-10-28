@@ -59,6 +59,8 @@ export type ComplaintCategory =
   | "Compliance Failure"
   | "Other";
 
+export type ComplaintPriority = "High" | "Medium" | "Low";
+
 export type UserRole = "admin" | "bureau_officer" | "oversight_officer";
 
 export type AlertStatus = "new" | "reviewed" | "related" | "not_overlapping" | "coordination_required";
@@ -101,6 +103,7 @@ export interface Complaint {
   institutionName: string;
   institutionAicteId: string;
   category: ComplaintCategory;
+  priority: ComplaintPriority;
   bureauCode: BureauCode;
   bureauName: BureauName;
   assignedOfficerId: string;
@@ -164,6 +167,7 @@ export interface OverlapAlert {
   bureauNames: BureauName[];
   statuses: ComplaintStatus[];
   latestActionDates: string[];
+  matchReasons: string[];
   detectedAt: string;
   alertStatus: AlertStatus;
   reviewedBy?: string;
