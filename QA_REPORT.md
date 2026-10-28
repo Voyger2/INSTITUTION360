@@ -140,6 +140,56 @@ Final state at frontend completion — all commands re-run immediately before th
 - Served HTML spot-checks: dashboard shows 42 complaints / 11 overdue; institutions register lists fictional names only; audit log renders seeded actor names (no raw `user-*` IDs in content); complaints register shows the Priority column; all 6 accounts with `example.com` emails on `/login`; all routes (including detail pages and bogus-ID paths) return 200.
 - `Reset demo data` restores the full enriched dataset including seeded reviews and histories.
 
+## Part 4 — Empty Overlap Alerts fix, disclaimer cleanup & deployment readiness (October 28, 2026)
+
+### Root cause of the empty Overlap Alerts page
+
+`src/lib/demo-state.ts` initialised the module-level store with `let overlapAlerts = [];`. Detection (`detectOverlaps`) only ran inside mutation paths (`setComplaints`, `updateComplaintStatus`, `assignOfficer`, `transferCase`, `resetDemoData`) — never during initial state construction. A fresh page load therefore exposed zero alerts to the context, so `/overlaps` rendered an empty table with `0 New / 0 Reviewed`, the dashboard overlap widget showed no alerts, and notifications omitted the 8 seeded pending alerts. The Part 3 verification missed it because the headless check called `detectOverlaps` directly instead of exercising the store's initialisation path. (Clicking "Reset demo data" would have populated the page — the bug only affected the initial load.)
+
+**Fix:** `overlapAlerts` is now initialised via `detectOverlaps(complaints, INSTITUTIONS)` so the seeded alerts (with seeded review states) exist before first render. `detectedAt` for seed-derived alerts uses the deterministic dataset anchor instead of a live clock, keeping the initial module evaluation PPR-safe. No hardcoded rows or counts were added; everything still derives from the same rule engine.
+
+### Overlap Alerts page rework
+
+- Summary badges now count the actual returned records per review state: **8 Pending review, 2 Reviewed, 1 Related, 1 Not overlapping, 1 Coordination required** (sums to 13 = table rows).
+- Table shows institution name (linked to `/institutions/[id]`), canonical AICTE Permanent ID, related case IDs (each linked to `/complaints/[id]`), involved bureaus, case statuses, latest action date and review status.
+- Review dialog shows the full alert context, generated "why this was detected" reasons, and any existing review (status, recorded reason, reviewer, date). A single submit path now requires a decision **and** a written reason; the reviewer is recorded from the signed-in demo user. Oversight roles get a read-only notice instead of controls.
+- Human-review notice retained but styled as a normal informational note; detection explicitly described as rule-based (no ML claims).
+- Dashboard widget review actions now attribute the signed-in user instead of a hardcoded ID.
+
+### Disclaimer banner removal
+
+- The repeated warning strip under the app header ("Demonstration prototype — all data is synthetic, no backend, not production-grade…") is removed from the authenticated layout.
+- A compact footer note now carries the disclosure: independent demonstration prototype (SIH26264), synthetic data, not connected to AICTE production systems, changes reset on refresh, link to Help.
+- The small "DEMO DATA" badge remains (restyled from warning to informational colour). Login-page disclosure that demo sign-in is not real authentication, the Help page's prototype section, and per-page "synthetic data" footnotes are retained.
+
+### Regression test
+
+`scripts/test-overlaps.mjs` (`npm run test:overlaps`) compiles the real `demo-data`, `formatting`, `overlap-detection` and `demo-state` modules into a cache folder and asserts, against the actual store:
+1. initial demo state exposes a nonzero seeded alert set (13) — the empty-table regression;
+2. per-status counts equal the returned records (8/2/1/1/1, sum = total);
+3. every record carries the fields the page renders (institution, AICTE ID, ≥2 unique case IDs, ≥2 bureaus, statuses, match reasons, dates);
+4. re-detection is idempotent (same IDs, no duplicates) and preserves seeded reviews;
+5. a review updates the alert and moves the counts;
+6. an unrelated complaint status change does not erase the review decision;
+7. `resetDemoData` restores the seeded review states.
+
+### Verification (October 28, 2026)
+
+- `npx tsc --noEmit` — 0 errors.
+- `npm run lint` — 0 errors / 0 warnings.
+- `npm run build` — green, 18 route entries (PPR variants included).
+- `npm run test:overlaps` — all 7 checks pass.
+- Existing backend suite (`pytest backend/tests`) — 29 passed (backend untouched by this task).
+- Served-HTML probes: `/overlaps` renders the 13 alert records with the 8/2/1/1/1 counters, institution links (`/institutions/inst-002`) and complaint links (`/complaints/complaint-*`); `/dashboard` shows "8 new" in the overlap widget; the disclaimer strip is absent and the footer note present; all routes (`/dashboard`, `/overlaps`, `/notifications`, `/complaints`, `/institutions`, `/reports`, `/administration`, `/audit-log`, `/profile`, `/help`, detail pages, invalid IDs, `/login`) return 200; invalid IDs render the inline not-found view.
+- Outstanding manual browser checks: interactive review dialog, filters/sorting clicks, responsive drawer behaviour at mobile widths, and visual review at desktop widths — no browser automation is available in this environment.
+
+### Deployment readiness
+
+- No environment variables are required: the prototype performs no network calls and reads no secrets (verified: no `process.env`, `localhost` URLs, API keys or `.env` files in `src/`).
+- Stack is a standard Next.js 16 app (React 19, Tailwind 4). `next.config.ts` uses `cacheComponents`/`partialPrefetching` (PPR) and Turbopack; **do not** use `output: "export"` — this app is not a static export.
+- Recommended hosting (Vercel): import the repo, framework preset **Next.js**, build command `npm run build`, install `npm install`, no env vars. Alternative Node hosts: Node 20.9+ (or 24 LTS), `npm ci && npm run build && npm run start` behind a reverse proxy.
+- Demo state is intentionally in-memory per browser tab (resets on hard refresh); this is documented in the footer/Help and requires no server.
+
 ## How to run
 
 ```powershell

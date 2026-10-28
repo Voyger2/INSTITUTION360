@@ -14,7 +14,9 @@ import { calculateMetrics } from "@/lib/formatting";
 let complaints: Complaint[] = [...COMPLAINTS];
 let users: User[] = [...USERS];
 let currentUser: User = USERS[0]; // Default to admin
-let overlapAlerts: ReturnType<typeof detectOverlaps> = [];
+// Alerts are derived from the seeded complaints on first load (seeded review
+// states applied), so the Overlap Alerts page is populated before any mutation.
+let overlapAlerts: ReturnType<typeof detectOverlaps> = detectOverlaps(complaints, INSTITUTIONS);
 let metrics = calculateMetrics(complaints);
 
 let actionHistory: ActionHistory[] = [...SEED_ACTION_HISTORY];

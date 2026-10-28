@@ -1,5 +1,5 @@
 import type { Complaint, ComplaintStatus, Institution, OverlapAlert } from "@/types";
-import { BUREAUS, SEED_ALERT_REVIEWS, type SeedAlertReview } from "@/data/demo-data";
+import { BUREAUS, DEMO_DATA_AS_OF, SEED_ALERT_REVIEWS, type SeedAlertReview } from "@/data/demo-data";
 
 const ACTIVE_STATUSES: ComplaintStatus[] = [
   "Received",
@@ -86,7 +86,7 @@ export function detectOverlaps(
         `Cases ${caseIds.join(", ")} are open across ${bureauCodes.length} desks: ${bureauNames.join(", ")}.`,
         "Multiple parallel workflows on the same institution may duplicate effort; coordinate disposal decisions.",
       ],
-      detectedAt: previous?.detectedAt ?? new Date().toISOString(),
+      detectedAt: previous?.detectedAt ?? seed?.reviewedAt ?? `${DEMO_DATA_AS_OF}T09:00:00.000Z`,
       alertStatus,
       reviewedBy,
       reviewedAt,

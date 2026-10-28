@@ -254,7 +254,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="badge badge-warning hidden md:inline-flex" title="Demonstration environment with synthetic data">
+              <span className="badge badge-info hidden md:inline-flex" title="Demonstration environment with synthetic data">
                 DEMO DATA
               </span>
               <Link
@@ -322,12 +322,6 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </div>
-          <div
-            className="px-4 py-1.5 bg-warning-bg border-t border-warning-border text-xs text-warning"
-            role="note"
-          >
-            Demonstration prototype — all data is synthetic, no backend, not production-grade. A hard page refresh resets in-memory demo changes.
-          </div>
         </header>
 
         <main
@@ -339,7 +333,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
         </main>
 
         <footer className="border-t border-border px-4 py-3 text-xs text-ink-muted" role="contentinfo">
-          INSTITUTION360 — front-end prototype for SIH26264. Not connected to AICTE production systems. No real credentials or personal data are collected or processed.
+          INSTITUTION360 is an independent demonstration prototype (SIH26264) with synthetic data. Not connected to AICTE production systems; demo changes reset on page refresh. See{" "}
+          <Link href="/help" className="text-primary hover:underline">Help</Link> for details.
         </footer>
       </div>
     </div>

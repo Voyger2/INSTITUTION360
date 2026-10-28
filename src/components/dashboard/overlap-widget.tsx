@@ -21,7 +21,8 @@ interface OverlapAlertsWidgetProps {
 }
 
 export function OverlapAlertsWidget({ alerts }: OverlapAlertsWidgetProps) {
-  const { updateAlertStatus, addToast } = useDemoState();
+  const { updateAlertStatus, addToast, getCurrentUser } = useDemoState();
+  const currentUser = getCurrentUser();
   const [openAlertId, setOpenAlertId] = React.useState<string | null>(null);
 
   const typedAlerts = alerts as unknown as OverlapAlertLike[];
@@ -122,7 +123,7 @@ export function OverlapAlertsWidget({ alerts }: OverlapAlertsWidgetProps) {
               <div className="grid grid-cols-2 gap-2">
                 <Button variant="ghost" size="sm" onClick={() => {
                   if (!openAlertId) return;
-                  updateAlertStatus(openAlertId, "reviewed", "Reviewed by demo user", "user-001");
+                  updateAlertStatus(openAlertId, "reviewed", "Reviewed by demo user", currentUser.id);
                   addToast({ type: "success", title: "Alert reviewed", message: "Marked as reviewed." });
                   setOpenAlertId(null);
                 }}>
@@ -130,7 +131,7 @@ export function OverlapAlertsWidget({ alerts }: OverlapAlertsWidgetProps) {
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => {
                   if (!openAlertId) return;
-                  updateAlertStatus(openAlertId, "related", "Cases are related", "user-001");
+                  updateAlertStatus(openAlertId, "related", "Cases are related", currentUser.id);
                   addToast({ type: "success", title: "Alert marked related", message: "Cases flagged as related." });
                   setOpenAlertId(null);
                 }}>
@@ -138,7 +139,7 @@ export function OverlapAlertsWidget({ alerts }: OverlapAlertsWidgetProps) {
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => {
                   if (!openAlertId) return;
-                  updateAlertStatus(openAlertId, "not_overlapping", "Not overlapping", "user-001");
+                  updateAlertStatus(openAlertId, "not_overlapping", "Not overlapping", currentUser.id);
                   addToast({ type: "info", title: "Alert dismissed", message: "Marked as not overlapping." });
                   setOpenAlertId(null);
                 }}>
@@ -146,7 +147,7 @@ export function OverlapAlertsWidget({ alerts }: OverlapAlertsWidgetProps) {
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => {
                   if (!openAlertId) return;
-                  updateAlertStatus(openAlertId, "coordination_required", "Coordination needed between bureaus", "user-001");
+                  updateAlertStatus(openAlertId, "coordination_required", "Coordination needed between bureaus", currentUser.id);
                   addToast({ type: "warning", title: "Coordination flagged", message: "Inter-bureau coordination required." });
                   setOpenAlertId(null);
                 }}>
